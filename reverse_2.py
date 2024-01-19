@@ -6,6 +6,8 @@ import pickle
 def find_matrix(lang, step=1000):
     
     print("LANG", lang)
+    dict = {}
+
     # not aligned
     try:
         src = load_facebook_vectors(f"/data1/malto/csavelli/aligned_subwords_fasttext/wiki/wiki.{lang}.bin") 
@@ -22,7 +24,9 @@ def find_matrix(lang, step=1000):
         print("in src, not in dst", set(src.index_to_key) - set(dst.index_to_key))
         print("in dst, not in src", set(dst.index_to_key) - set(src.index_to_key))
     
-    vocab = list(set(src.index_to_key) & set(dst.index_to_key))
+    dict["missing_elements"] = [set(src.index_to_key) - set(dst.index_to_key), set(dst.index_to_key) - set(src.index_to_key)] # missing words in common vocabulary
+
+    vocab = sorted(list(set(src.index_to_key) & set(dst.index_to_key)))
         
     Y = dst[vocab]
     X = src[vocab]
@@ -32,7 +36,7 @@ def find_matrix(lang, step=1000):
     prod = (X @ W_)
     prod = prod / np.linalg.norm(prod, axis=1).reshape(-1,1)
 
-    print("prod", prod.shape)
+    dict["MSE"] = np.square(np.subtract(prod, Y)).sum(axis=1).mean() # mean squared error
 
     error_couples = []
     right_values = np.array([])
@@ -49,23 +53,30 @@ def find_matrix(lang, step=1000):
                     print("instead the right word should be ", M[j,j])
                     error_couples.append((i+j, v[j], M[j,v[j]], M[j,j]))
 
-                if M[j,v[j]] < .98:
-                    print("small similarity" , i+j, v[j], M[j,v[j]])
-            
             print(i, "/", len(prod), "done") if i % 50_000 == 0 else None
     
-    return src, dst, X, Y, W_, right_values.mean(), right_values.std(), error_couples
+    dict["accuracy"] = (right_values.mean(), right_values.std()) # values of the diagonal of the matrix
+    dict["n_errors"] = len(error_couples) # number of errors
+
+    src.vectors = src.vectors @ W_
+    src.vectors_ngrams = src.vectors_ngrams @ W_
+    src.vectors = src.vectors / np.linalg.norm(src.vectors, axis=1).reshape(-1,1)
+    src.vectors_ngrams = src.vectors_ngrams / np.linalg.norm(src.vectors_ngrams, axis=1).reshape(-1,1)
+
+    return src, X, Y, W_, right_values, error_couples, dict
 
             
 if __name__ == "__main__":
     
     with open("langs") as f:
-        for lang in f:# ["it"]:
+        for lang in ["hi"]:
             lang = lang.strip()  
             print("lang: ", lang)          
-            src, dst, X, Y, W_, mean, std, error_couples = find_matrix(lang)
+            src, X, Y, W_, right_values, error_couples, dict = find_matrix(lang)
             with open(f"res/{lang}.pkl", "wb") as f:
-                pickle.dump((src, dst, X, Y, W_, mean, std, error_couples), f)
+                pickle.dump((X, Y, W_, right_values, error_couples, dict), f)
+            src.save_word2vec_format(f"/data1/malto/csavelli/aligned_subwords_fasttext/res/wiki.{lang}.bin")
+
             break
 
 
