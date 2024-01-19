@@ -44,8 +44,11 @@ def find_matrix(lang):
 
             
 if __name__ == "__main__":
-    
+
+    src, dst, X, Y, W_ = find_matrix("it")
+    '''
     with open("langs") as f:
         for lang in f:# ["it"]:
             lang = lang.strip()            
             src, dst, X, Y, W_ = find_matrix(lang)
+    '''
