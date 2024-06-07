@@ -2,6 +2,7 @@ import numpy as np
 from gensim.models.keyedvectors import KeyedVectors
 from gensim.models.fasttext import load_facebook_vectors
 import pickle
+import os 
 
 def find_matrix(lang, step=1000):
     
@@ -21,8 +22,8 @@ def find_matrix(lang, step=1000):
         print("src and dst vocabularies differ. ")
         print("src", len(src))
         print("dst", len(dst))
-        print("in src, not in dst", set(src.index_to_key) - set(dst.index_to_key))
-        print("in dst, not in src", set(dst.index_to_key) - set(src.index_to_key))
+        print("in src, not in dst", len(set(src.index_to_key) - set(dst.index_to_key)))
+        print("in dst, not in src", len(set(dst.index_to_key) - set(src.index_to_key)))
     
     dict["missing_elements"] = [set(src.index_to_key) - set(dst.index_to_key), set(dst.index_to_key) - set(src.index_to_key)] # missing words in common vocabulary
 
@@ -49,8 +50,8 @@ def find_matrix(lang, step=1000):
             right_values = np.concatenate((right_values, np.diagonal(M[:,v])))
             for j in range(len(v)):
                 if v[j] != i+j: # check that the most vector is the word itself
-                    print("words do not match", i+j, v[j], M[j,v[j]])
-                    print("instead the right word should be ", M[j,j])
+                    #print("words do not match", i+j, v[j], M[j,v[j]])
+                    #print("instead the right word should be ", M[j,j])
                     error_couples.append((i+j, v[j], M[j,v[j]], M[j,j]))
 
             print(i, "/", len(prod), "done") if i % 50_000 == 0 else None
@@ -69,20 +70,13 @@ def find_matrix(lang, step=1000):
 if __name__ == "__main__":
     
     with open("langs") as f:
-        for lang in ["hi"]:
+        for lang in f:
             lang = lang.strip()  
-            print("lang: ", lang)          
+            print("lang: ", lang)  
             src, X, Y, W_, right_values, error_couples, dict = find_matrix(lang)
             with open(f"res/{lang}.pkl", "wb") as f:
                 pickle.dump((X, Y, W_, right_values, error_couples, dict), f)
-            src.save_word2vec_format(f"/data1/malto/csavelli/aligned_subwords_fasttext/res/wiki.{lang}.bin")
-
-            break
-
-
-    #label = "es"
-
-    #src, dst, X, Y, W_, mean, std, error_couples = find_matrix(label)
-
-    # with open(f"{label}.pkl", "wb") as f:
-    #     pickle.dump((X, Y, W_, mean, std, error_couples), f)
+            #src.save(f"/data1/malto/csavelli/aligned_subwords_fasttext/res/wiki.{lang}.bin")
+            os.makedirs(f"/data1/malto/csavelli/aligned_subwords_fasttext/res/{lang}", exist_ok=True)
+            with open(f"/data1/malto/csavelli/aligned_subwords_fasttext/res/{lang}/wiki.{lang}.pkl", "wb") as f:
+                        pickle.dump(src, f)
