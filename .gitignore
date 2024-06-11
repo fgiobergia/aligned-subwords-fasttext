@@ -3,3 +3,5 @@ embs/*
 res
 .vscode
 .txt
+*.vec 
+*.pkl
